@@ -1,11 +1,24 @@
 package br.com.caixaverso.painel.dto;
 
-/**
- * DTO de saída do endpoint de simulação de investimentos.
- * Representa exatamente o formato exigido pelo desafio.
- */
 public record SimulacaoResponseDTO(
-        ProdutoDTO produtoValidado,
+        ProdutoValidadoDTO produtoValidado,
         ResultadoSimulacaoDTO resultadoSimulacao,
         String dataSimulacao
-) {}
+) {
+
+    public record ProdutoValidadoDTO(
+            Long id,
+            String nome,
+            String tipo,
+            double rentabilidade,
+            String risco
+    ) {
+    }
+
+    public record ResultadoSimulacaoDTO(
+            double valorFinal,
+            double rentabilidadeEfetiva,
+            int prazoMeses
+    ) {
+    }
+}

@@ -1,97 +1,135 @@
 package br.com.caixaverso.painel.service;
 
-import br.com.caixaverso.painel.dto.*;
-import br.com.caixaverso.painel.model.Cliente;
+import br.com.caixaverso.painel.dto.SimulacaoRequestDTO;
+import br.com.caixaverso.painel.dto.SimulacaoResponseDTO;
 import br.com.caixaverso.painel.model.Produto;
 import br.com.caixaverso.painel.model.Simulacao;
-import br.com.caixaverso.painel.repository.ClienteRepository;
+import br.com.caixaverso.painel.repository.ProdutoRepository;
 import br.com.caixaverso.painel.repository.SimulacaoRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
+import jakarta.transaction.Transactional;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
+import java.time.OffsetDateTime;
+import java.util.Comparator;
+import java.util.List;
 
 @ApplicationScoped
 public class SimulacaoService {
 
     @Inject
+    ProdutoRepository produtoRepository;
+
+    @Inject
     SimulacaoRepository simulacaoRepository;
 
     @Inject
-    ProdutoService produtoService;
+    TelemetriaService telemetriaService;
 
-    @Inject
-    ClienteRepository clienteRepository;
-
-    /**
-     * Serviço de simulação totalmente aderente ao desafio.
-     * Recebe SimulacaoRequestDTO e retorna SimulacaoResponseDTO.
-     */
+    @Transactional
     public SimulacaoResponseDTO simular(SimulacaoRequestDTO request) {
+        long inicio = System.currentTimeMillis();
 
-        // 1. Validações do desafio
-        if (request.clienteId() == null)
-            throw new IllegalArgumentException("clienteId é obrigatório.");
+        validarRequest(request);
 
-        if (request.valor() == null || request.valor() <= 0)
-            throw new IllegalArgumentException("valor deve ser maior que zero.");
+        List<Produto> produtos = produtoRepository.find("tipo", request.tipoProduto()).list();
+        if (produtos == null || produtos.isEmpty()) {
+            throw new IllegalArgumentException("Nenhum produto encontrado para o tipo: " + request.tipoProduto());
+        }
 
-        if (request.prazoMeses() == null || request.prazoMeses() <= 0)
-            throw new IllegalArgumentException("prazoMeses deve ser maior que zero.");
+        Produto escolhido = produtos.stream()
+                .filter(p -> produtoAtendeParametros(p, request))
+                .max(Comparator.comparingDouble(p -> {
+                    Double r = p.getRentabilidade();
+                    return r != null ? r : 0.0;
+                }))
+                .orElseThrow(() -> new IllegalArgumentException("Nenhum produto atende aos parâmetros informados."));
 
-        if (request.tipoProduto() == null || request.tipoProduto().isBlank())
-            throw new IllegalArgumentException("tipoProduto é obrigatório.");
+        double rentabilidadeEfetiva = escolhido.getRentabilidade() != null ? escolhido.getRentabilidade() : 0.0;
+        double valorFinal = request.valor() * (1 + rentabilidadeEfetiva);
 
-        // 2. Verifica cliente
-        Cliente cliente = clienteRepository.findById(request.clienteId());
-        if (cliente == null)
-            throw new IllegalArgumentException("Cliente não encontrado.");
+        String dataSimulacao = OffsetDateTime.now().toString();
 
-        // 3. Busca produto por tipo (como exige o PDF)
-        Produto produto = produtoService.buscarPorTipo(request.tipoProduto());
-        if (produto == null)
-            throw new IllegalArgumentException("Produto não encontrado para o tipo informado.");
-
-        // 4. Cálculo do valor final
-        double taxa = produto.getRentabilidade();
-        double fator = 1 + taxa * (request.prazoMeses() / 12.0);
-        double valorFinal = request.valor() * fator;
-
-        // 5. Persiste simulação no banco
         Simulacao simulacao = new Simulacao();
         simulacao.setClienteId(request.clienteId());
-        simulacao.setProduto(produto.getNome());
+        simulacao.setProduto(escolhido.getNome());
         simulacao.setValorInvestido(request.valor());
         simulacao.setValorFinal(valorFinal);
         simulacao.setPrazoMeses(request.prazoMeses());
-        simulacao.setDataSimulacao(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+        simulacao.setDataSimulacao(dataSimulacao);
 
         simulacaoRepository.persist(simulacao);
 
-        // 6. Monta DTOs conforme o desafio
-        ProdutoDTO produtoDTO = new ProdutoDTO(
-                produto.getId(),
-                produto.getNome(),
-                produto.getTipo(),
-                produto.getRentabilidade(),
-                produto.getRisco()
-        );
+        SimulacaoResponseDTO.ProdutoValidadoDTO produtoDTO =
+                new SimulacaoResponseDTO.ProdutoValidadoDTO(
+                        escolhido.getId(),
+                        escolhido.getNome(),
+                        escolhido.getTipo(),
+                        rentabilidadeEfetiva,
+                        escolhido.getRisco()
+                );
 
-        ResultadoSimulacaoDTO resultadoDTO = new ResultadoSimulacaoDTO(
-                valorFinal,
-                taxa,
-                request.prazoMeses()
-        );
+        SimulacaoResponseDTO.ResultadoSimulacaoDTO resultadoDTO =
+                new SimulacaoResponseDTO.ResultadoSimulacaoDTO(
+                        valorFinal,
+                        rentabilidadeEfetiva,
+                        request.prazoMeses()
+                );
 
-        return new SimulacaoResponseDTO(
-                produtoDTO,
-                resultadoDTO,
-                simulacao.getDataSimulacao()
-        );
+        long fim = System.currentTimeMillis();
+        long duracao = fim - inicio;
+        telemetriaService.registrar("simular-investimento", duracao);
+
+        return new SimulacaoResponseDTO(produtoDTO, resultadoDTO, dataSimulacao);
     }
 
-    public java.util.List<Simulacao> listarTodas() {
+    public List<Simulacao> listarTodas() {
         return simulacaoRepository.listAll();
+    }
+
+    private void validarRequest(SimulacaoRequestDTO request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Request de simulação não pode ser nulo.");
+        }
+        if (request.clienteId() == null) {
+            throw new IllegalArgumentException("clienteId é obrigatório.");
+        }
+        if (request.valor() <= 0) {
+            throw new IllegalArgumentException("valor deve ser maior que zero.");
+        }
+        if (request.prazoMeses() <= 0) {
+            throw new IllegalArgumentException("prazoMeses deve ser maior que zero.");
+        }
+        if (request.tipoProduto() == null || request.tipoProduto().isBlank()) {
+            throw new IllegalArgumentException("tipoProduto é obrigatório.");
+        }
+    }
+
+    private boolean produtoAtendeParametros(Produto produto, SimulacaoRequestDTO request) {
+        Double valorMinimo = produto.getValorMinimo();
+        Double valorMaximo = produto.getValorMaximo();
+        Integer prazoMin = produto.getPrazoMinMeses();
+        Integer prazoMax = produto.getPrazoMaxMeses();
+
+        double valor = request.valor();
+        int prazo = request.prazoMeses();
+
+        boolean valorOk = true;
+        boolean prazoOk = true;
+
+        if (valorMinimo != null && valor < valorMinimo) {
+            valorOk = false;
+        }
+        if (valorMaximo != null && valor > valorMaximo) {
+            valorOk = false;
+        }
+        if (prazoMin != null && prazo < prazoMin) {
+            prazoOk = false;
+        }
+        if (prazoMax != null && prazo > prazoMax) {
+            prazoOk = false;
+        }
+
+        return valorOk && prazoOk;
     }
 }
