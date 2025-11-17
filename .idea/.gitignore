@@ -1,3 +1,5 @@
 # Default ignored files
 /shelf/
 /workspace.xml
+hs_err_pid*.log
+*.log
