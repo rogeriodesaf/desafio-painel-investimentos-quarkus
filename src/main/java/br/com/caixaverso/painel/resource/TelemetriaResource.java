@@ -42,3 +42,4 @@ public class TelemetriaResource {
         return new TelemetriaResponse(servicos, periodo);
     }
 }
+
