@@ -15,3 +15,4 @@ public class InvestimentoRepository implements PanacheRepository<Investimento> {
     }
 }
 
+    

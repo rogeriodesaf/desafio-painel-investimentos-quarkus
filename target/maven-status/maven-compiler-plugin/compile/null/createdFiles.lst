@@ -1,1 +1,15 @@
+br\com\caixaverso\painel\model\SimulacaoDia.class
+br\com\caixaverso\painel\model\Produto.class
+br\com\caixaverso\painel\model\Cliente.class
+br\com\caixaverso\painel\model\Investimento.class
+br\com\caixaverso\painel\repository\ClienteRepository.class
+br\com\caixaverso\painel\repository\InvestimentoRepository.class
+br\com\caixaverso\painel\repository\SimulacaoDiaRepository.class
+br\com\caixaverso\painel\model\Telemetria.class
+br\com\caixaverso\painel\model\Simulacao.class
+br\com\caixaverso\painel\repository\ProdutoRepository.class
+br\com\caixaverso\painel\service\ProdutoService.class
+br\com\caixaverso\painel\service\SimulacaoService.class
+br\com\caixaverso\painel\repository\TelemetriaRepository.class
+br\com\caixaverso\painel\repository\SimulacaoRepository.class
 br\com\caixaverso\painel\resource\StatusResource.class
