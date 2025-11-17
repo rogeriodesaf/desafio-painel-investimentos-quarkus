@@ -1,9 +1,9 @@
 package br.com.caixaverso.painel.model;
 
 import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
 @Entity
@@ -19,7 +19,11 @@ public class Produto {
     private Double rentabilidade;
     private String risco;
 
-    // Getters e Setters
+    // Parâmetros de elegibilidade
+    private Double valorMinimo;
+    private Double valorMaximo;
+    private Integer prazoMinMeses;
+    private Integer prazoMaxMeses;
 
     public Long getId() {
         return id;
@@ -60,5 +64,36 @@ public class Produto {
     public void setRisco(String risco) {
         this.risco = risco;
     }
-}
 
+    public Double getValorMinimo() {
+        return valorMinimo;
+    }
+
+    public void setValorMinimo(Double valorMinimo) {
+        this.valorMinimo = valorMinimo;
+    }
+
+    public Double getValorMaximo() {
+        return valorMaximo;
+    }
+
+    public void setValorMaximo(Double valorMaximo) {
+        this.valorMaximo = valorMaximo;
+    }
+
+    public Integer getPrazoMinMeses() {
+        return prazoMinMeses;
+    }
+
+    public void setPrazoMinMeses(Integer prazoMinMeses) {
+        this.prazoMinMeses = prazoMinMeses;
+    }
+
+    public Integer getPrazoMaxMeses() {
+        return prazoMaxMeses;
+    }
+
+    public void setPrazoMaxMeses(Integer prazoMaxMeses) {
+        this.prazoMaxMeses = prazoMaxMeses;
+    }
+}
