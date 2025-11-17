@@ -1,8 +1,10 @@
 package br.com.caixaverso.painel.resource;
 
+import br.com.caixaverso.painel.dto.SimulacaoPorProdutoDiaDTO;
 import br.com.caixaverso.painel.dto.SimulacaoRequestDTO;
 import br.com.caixaverso.painel.dto.SimulacaoResponseDTO;
 import br.com.caixaverso.painel.model.Simulacao;
+import br.com.caixaverso.painel.service.SimulacaoDiaService;
 import br.com.caixaverso.painel.service.SimulacaoService;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.Consumes;
@@ -25,6 +27,9 @@ public class SimulacaoResource {
     @Inject
     SimulacaoService simulacaoService;
 
+    @Inject
+    SimulacaoDiaService simulacaoDiaService;
+
     @POST
     @Path("/simular-investimento")
     @Operation(summary = "Simula um investimento com base nos parâmetros informados")
@@ -37,5 +42,12 @@ public class SimulacaoResource {
     @Operation(summary = "Retorna todas as simulações realizadas")
     public List<Simulacao> listarTodas() {
         return simulacaoService.listarTodas();
+    }
+
+    @GET
+    @Path("/simulacoes/por-produto-dia")
+    @Operation(summary = "Retorna valores simulados agregados por produto e dia")
+    public List<SimulacaoPorProdutoDiaDTO> listarPorProdutoDia() {
+        return simulacaoDiaService.listarTudo();
     }
 }
