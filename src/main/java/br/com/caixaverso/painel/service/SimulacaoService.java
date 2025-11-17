@@ -1,5 +1,6 @@
 package br.com.caixaverso.painel.service;
 
+import br.com.caixaverso.painel.dto.*;
 import br.com.caixaverso.painel.model.Cliente;
 import br.com.caixaverso.painel.model.Produto;
 import br.com.caixaverso.painel.model.Simulacao;
@@ -10,7 +11,6 @@ import jakarta.inject.Inject;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 @ApplicationScoped
 public class SimulacaoService {
@@ -25,79 +25,73 @@ public class SimulacaoService {
     ClienteRepository clienteRepository;
 
     /**
-     * Regra principal do desafio:
-     * - valida dados de entrada
-     * - garante existência de cliente e produto
-     * - calcula valor final com base na rentabilidade do produto e prazo
-     * - persiste a simulação e retorna o registro
+     * Serviço de simulação totalmente aderente ao desafio.
+     * Recebe SimulacaoRequestDTO e retorna SimulacaoResponseDTO.
      */
-    public Simulacao simular(Long clienteId,
-                             Long produtoId,
-                             Double valorInvestido,
-                             Integer prazoMeses) {
+    public SimulacaoResponseDTO simular(SimulacaoRequestDTO request) {
 
-        // Validações básicas
-        if (clienteId == null) {
-            throw new IllegalArgumentException("clienteId não pode ser nulo.");
-        }
-        if (produtoId == null) {
-            throw new IllegalArgumentException("produtoId não pode ser nulo.");
-        }
-        if (valorInvestido == null || valorInvestido <= 0) {
-            throw new IllegalArgumentException("valorInvestido deve ser maior que zero.");
-        }
-        if (prazoMeses == null || prazoMeses <= 0) {
+        // 1. Validações do desafio
+        if (request.clienteId() == null)
+            throw new IllegalArgumentException("clienteId é obrigatório.");
+
+        if (request.valor() == null || request.valor() <= 0)
+            throw new IllegalArgumentException("valor deve ser maior que zero.");
+
+        if (request.prazoMeses() == null || request.prazoMeses() <= 0)
             throw new IllegalArgumentException("prazoMeses deve ser maior que zero.");
-        }
 
-        // Verifica se o cliente existe (desafio trabalha com clienteId consistente)
-        Cliente cliente = clienteRepository.findById(clienteId);
-        if (cliente == null) {
-            throw new IllegalArgumentException("Cliente não encontrado para o id: " + clienteId);
-        }
+        if (request.tipoProduto() == null || request.tipoProduto().isBlank())
+            throw new IllegalArgumentException("tipoProduto é obrigatório.");
 
-        // Busca o produto e já valida dentro do ProdutoService (pode lançar IllegalArgumentException)
-        Produto produto = produtoService.buscarPorId(produtoId);
+        // 2. Verifica cliente
+        Cliente cliente = clienteRepository.findById(request.clienteId());
+        if (cliente == null)
+            throw new IllegalArgumentException("Cliente não encontrado.");
 
-        // Regra de cálculo da simulação:
-        // Ex.: valorFinal = valorInvestido * (1 + rentabilidade * prazoMeses/12)
-        double taxaAnual = produto.getRentabilidade(); // ex: 0.12 = 12% ao ano
-        double fator = 1 + taxaAnual * (prazoMeses / 12.0);
-        double valorFinal = valorInvestido * fator;
+        // 3. Busca produto por tipo (como exige o PDF)
+        Produto produto = produtoService.buscarPorTipo(request.tipoProduto());
+        if (produto == null)
+            throw new IllegalArgumentException("Produto não encontrado para o tipo informado.");
 
-        // Monta objeto de Simulação
+        // 4. Cálculo do valor final
+        double taxa = produto.getRentabilidade();
+        double fator = 1 + taxa * (request.prazoMeses() / 12.0);
+        double valorFinal = request.valor() * fator;
+
+        // 5. Persiste simulação no banco
         Simulacao simulacao = new Simulacao();
-        simulacao.setClienteId(clienteId);
+        simulacao.setClienteId(request.clienteId());
         simulacao.setProduto(produto.getNome());
-        simulacao.setValorInvestido(valorInvestido);
+        simulacao.setValorInvestido(request.valor());
         simulacao.setValorFinal(valorFinal);
-        simulacao.setPrazoMeses(prazoMeses);
+        simulacao.setPrazoMeses(request.prazoMeses());
+        simulacao.setDataSimulacao(LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
 
-        // Data da simulação no formato ISO (compatível com o JSON do desafio)
-        String dataAtual = LocalDateTime.now()
-                .format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
-        simulacao.setDataSimulacao(dataAtual);
-
-        // Persiste e retorna
         simulacaoRepository.persist(simulacao);
 
-        return simulacao;
+        // 6. Monta DTOs conforme o desafio
+        ProdutoDTO produtoDTO = new ProdutoDTO(
+                produto.getId(),
+                produto.getNome(),
+                produto.getTipo(),
+                produto.getRentabilidade(),
+                produto.getRisco()
+        );
+
+        ResultadoSimulacaoDTO resultadoDTO = new ResultadoSimulacaoDTO(
+                valorFinal,
+                taxa,
+                request.prazoMeses()
+        );
+
+        return new SimulacaoResponseDTO(
+                produtoDTO,
+                resultadoDTO,
+                simulacao.getDataSimulacao()
+        );
     }
 
-    /**
-     * Lista todas as simulações registradas.
-     */
-    public List<Simulacao> listarTodas() {
+    public java.util.List<Simulacao> listarTodas() {
         return simulacaoRepository.listAll();
-    }
-
-    /**
-     * Lista simulações de um cliente específico.
-     */
-    public List<Simulacao> listarPorCliente(Long clienteId) {
-        if (clienteId == null) {
-            throw new IllegalArgumentException("clienteId não pode ser nulo.");
-        }
-        return simulacaoRepository.findByClienteId(clienteId);
     }
 }
