@@ -1,8 +1,9 @@
 package br.com.caixaverso.painel.dto;
 
-public record PerfilRiscoDTO(
+public record PerfilRiscoResponseDTO(
         Long clienteId,
         String perfil,
-        Integer pontuacao,
+        int pontuacao,
         String descricao
-) {}
+) {
+}

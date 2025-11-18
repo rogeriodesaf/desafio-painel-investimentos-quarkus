@@ -1,77 +1,41 @@
 package br.com.caixaverso.painel.service;
 
-import br.com.caixaverso.painel.model.Cliente;
+import br.com.caixaverso.painel.dto.InvestimentoResponseDTO;
 import br.com.caixaverso.painel.model.Investimento;
-import br.com.caixaverso.painel.repository.ClienteRepository;
 import br.com.caixaverso.painel.repository.InvestimentoRepository;
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 
 import java.util.List;
 
-/**
- * Service responsável por fornecer os investimentos associados a um cliente.
- *
- * No PDF do desafio, existe o endpoint:
- *
- *     GET /investimentos/{clienteId}
- *
- * cujo retorno consiste em uma lista de investimentos contendo:
- *  - id
- *  - tipo
- *  - valor
- *  - rentabilidade
- *  - data
- *
- * Este service NÃO cria novos investimentos.
- * Ele apenas faz:
- *  1. validar o parâmetro
- *  2. verificar se o cliente existe
- *  3. consultar o repositório
- *  4. devolver a lista encontrada
- *
- * A responsabilidade da criação de investimentos é do fluxo de simulação,
- * executado em outro service (SimulacaoService).
- */
 @ApplicationScoped
 public class InvestimentoService {
 
     @Inject
     InvestimentoRepository investimentoRepository;
 
-    @Inject
-    ClienteRepository clienteRepository;
-
-    /**
-     * Lista todos os investimentos associados a um cliente.
-     *
-     * Passos realizados:
-     *  1. valida clienteId
-     *  2. verifica existência do cliente no banco
-     *  3. consulta a tabela investimento filtrando por cliente_id
-     *  4. retorna a lista (pode estar vazia)
-     *
-     * @param clienteId identificador do cliente
-     * @return lista de investimentos válidos ou vazia
-     */
-    public List<Investimento> listarPorCliente(Long clienteId) {
-
-        /** 1. Validação do parâmetro */
+    public List<InvestimentoResponseDTO> listarPorCliente(Long clienteId) {
         if (clienteId == null) {
-            throw new IllegalArgumentException("clienteId não pode ser nulo.");
+            throw new IllegalArgumentException("clienteId é obrigatório.");
         }
 
-        /** 2. Verifica se o cliente existe */
-        Cliente cliente = clienteRepository.findById(clienteId);
-        if (cliente == null) {
-            throw new IllegalArgumentException("Cliente não encontrado para o id: " + clienteId);
+        List<Investimento> investimentos = investimentoRepository
+                .find("clienteId", clienteId)
+                .list();
+
+        if (investimentos == null || investimentos.isEmpty()) {
+            // Deixa o endpoint retornar lista vazia — isso é ok pro desafio
+            return List.of();
         }
 
-        /**
-         * 3. Consulta ao repositório
-         * O método findByClienteId() já precisa existir no InvestimentoRepository.
-         * Ele retorna todos os investimentos associados ao cliente.
-         */
-        return investimentoRepository.findByClienteId(clienteId);
+        return investimentos.stream()
+                .map(inv -> new InvestimentoResponseDTO(
+                        inv.getId(),
+                        inv.getTipo(),
+                        inv.getValor() != null ? inv.getValor() : 0.0,
+                        inv.getRentabilidade() != null ? inv.getRentabilidade() : 0.0,
+                        inv.getData()
+                ))
+                .toList();
     }
 }
