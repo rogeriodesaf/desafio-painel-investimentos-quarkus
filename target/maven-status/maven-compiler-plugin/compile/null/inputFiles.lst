@@ -1,3 +1,4 @@
+C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\dto\PerfilRiscoDTO.java
 C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\model\Cliente.java
 C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\model\Investimento.java
 C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\model\Produto.java
@@ -11,5 +12,9 @@ C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src
 C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\repository\SimulacaoRepository.java
 C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\repository\TelemetriaRepository.java
 C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\resource\StatusResource.java
+C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\service\InvestimentoService.java
+C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\service\PerfilRiscoService.java
 C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\service\ProdutoService.java
+C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\service\SimulacaoDiaService.java
 C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\service\SimulacaoService.java
+C:\Users\User\Documents\Desenvolvimento\desafio-painel-investimentos-quarkus\src\main\java\br\com\caixaverso\painel\service\TelemetriaService.java
