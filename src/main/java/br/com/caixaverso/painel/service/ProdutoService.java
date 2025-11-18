@@ -16,37 +16,49 @@ public class ProdutoService {
     @Inject
     ProdutoRepository produtoRepository;
 
+    @Inject
+    TelemetriaService telemetriaService; // ← telemetria adicionada
+
     public List<ProdutoResponseDTO> recomendarPorPerfil(String perfil) {
-        if (perfil == null || perfil.isBlank()) {
-            throw new IllegalArgumentException("perfil é obrigatório.");
+
+        long inicio = System.currentTimeMillis(); // medir início
+
+        try {
+            if (perfil == null || perfil.isBlank()) {
+                throw new IllegalArgumentException("perfil é obrigatório.");
+            }
+
+            String p = perfil.trim().toUpperCase(Locale.ROOT);
+
+            List<Produto> todos = produtoRepository.listAll();
+
+            List<Produto> filtrados = switch (p) {
+                case "CONSERVADOR" -> filtrarConservador(todos);
+                case "MODERADO"    -> filtrarModerado(todos);
+                case "AGRESSIVO"   -> filtrarAgressivo(todos);
+                default -> throw new IllegalArgumentException(
+                        "Perfil inválido. Use Conservador, Moderado ou Agressivo.");
+            };
+
+            return filtrados.stream()
+                    .sorted(Comparator.comparingDouble(
+                            (Produto prod) -> prod.getRentabilidade() != null
+                                    ? prod.getRentabilidade()
+                                    : 0.0
+                    ).reversed())
+                    .map(prod -> new ProdutoResponseDTO(
+                            prod.getId(),
+                            prod.getNome(),
+                            prod.getTipo(),
+                            prod.getRentabilidade() != null ? prod.getRentabilidade() : 0.0,
+                            prod.getRisco()
+                    ))
+                    .toList();
+
+        } finally {
+            long fim = System.currentTimeMillis();
+            telemetriaService.registrar("produtos-recomendados", fim - inicio);
         }
-
-        String p = perfil.trim().toUpperCase(Locale.ROOT);
-
-        List<Produto> todos = produtoRepository.listAll();
-
-        List<Produto> filtrados = switch (p) {
-            case "CONSERVADOR" -> filtrarConservador(todos);
-            case "MODERADO"    -> filtrarModerado(todos);
-            case "AGRESSIVO"   -> filtrarAgressivo(todos);
-            default -> throw new IllegalArgumentException(
-                    "Perfil inválido. Use Conservador, Moderado ou Agressivo.");
-        };
-
-        return filtrados.stream()
-                .sorted(Comparator.comparingDouble(
-                        (Produto prod) -> prod.getRentabilidade() != null
-                                ? prod.getRentabilidade()
-                                : 0.0
-                ).reversed())
-                .map(prod -> new ProdutoResponseDTO(
-                        prod.getId(),
-                        prod.getNome(),
-                        prod.getTipo(),
-                        prod.getRentabilidade() != null ? prod.getRentabilidade() : 0.0,
-                        prod.getRisco()
-                ))
-                .toList();
     }
 
     private List<Produto> filtrarConservador(List<Produto> todos) {

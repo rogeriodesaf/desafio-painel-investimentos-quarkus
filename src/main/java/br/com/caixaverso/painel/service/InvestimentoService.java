@@ -14,28 +14,40 @@ public class InvestimentoService {
     @Inject
     InvestimentoRepository investimentoRepository;
 
+    @Inject
+    TelemetriaService telemetriaService; // ← TELEMETRIA ADICIONADA
+
     public List<InvestimentoResponseDTO> listarPorCliente(Long clienteId) {
-        if (clienteId == null) {
-            throw new IllegalArgumentException("clienteId é obrigatório.");
+
+        long inicio = System.currentTimeMillis(); // medir início
+
+        try {
+
+            if (clienteId == null) {
+                throw new IllegalArgumentException("clienteId é obrigatório.");
+            }
+
+            List<Investimento> investimentos = investimentoRepository
+                    .find("clienteId", clienteId)
+                    .list();
+
+            if (investimentos == null || investimentos.isEmpty()) {
+                return List.of();
+            }
+
+            return investimentos.stream()
+                    .map(inv -> new InvestimentoResponseDTO(
+                            inv.getId(),
+                            inv.getTipo(),
+                            inv.getValor() != null ? inv.getValor() : 0.0,
+                            inv.getRentabilidade() != null ? inv.getRentabilidade() : 0.0,
+                            inv.getData()
+                    ))
+                    .toList();
+
+        } finally {
+            long fim = System.currentTimeMillis();
+            telemetriaService.registrar("investimentos", fim - inicio);
         }
-
-        List<Investimento> investimentos = investimentoRepository
-                .find("clienteId", clienteId)
-                .list();
-
-        if (investimentos == null || investimentos.isEmpty()) {
-            // Deixa o endpoint retornar lista vazia — isso é ok pro desafio
-            return List.of();
-        }
-
-        return investimentos.stream()
-                .map(inv -> new InvestimentoResponseDTO(
-                        inv.getId(),
-                        inv.getTipo(),
-                        inv.getValor() != null ? inv.getValor() : 0.0,
-                        inv.getRentabilidade() != null ? inv.getRentabilidade() : 0.0,
-                        inv.getData()
-                ))
-                .toList();
     }
 }

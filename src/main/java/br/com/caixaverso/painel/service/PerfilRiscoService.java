@@ -2,15 +2,10 @@ package br.com.caixaverso.painel.service;
 
 import br.com.caixaverso.painel.dto.PerfilRiscoResponseDTO;
 import br.com.caixaverso.painel.model.Cliente;
-import br.com.caixaverso.painel.model.Investimento;
 import br.com.caixaverso.painel.repository.ClienteRepository;
-import br.com.caixaverso.painel.repository.InvestimentoRepository;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
-
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.util.List;
 
 @ApplicationScoped
 public class PerfilRiscoService {
@@ -19,158 +14,90 @@ public class PerfilRiscoService {
     ClienteRepository clienteRepository;
 
     @Inject
-    InvestimentoRepository investimentoRepository;
+    TelemetriaService telemetriaService; // ← adicionamos a telemetria
 
     public PerfilRiscoResponseDTO calcularPerfil(Long clienteId) {
-        if (clienteId == null) {
-            throw new IllegalArgumentException("clienteId é obrigatório.");
-        }
 
-        Cliente cliente = clienteRepository.findById(clienteId);
-        if (cliente == null) {
-            throw new IllegalArgumentException("Cliente não encontrado para o id: " + clienteId);
-        }
+        long inicio = System.currentTimeMillis(); // medir início do processamento
 
-        List<Investimento> investimentos = investimentoRepository
-                .find("clienteId", clienteId)
-                .list();
+        try {
+            if (clienteId == null) {
+                throw new IllegalArgumentException("clienteId é obrigatório.");
+            }
 
-        if (investimentos == null || investimentos.isEmpty()) {
-            int pontuacao = 20;
-            String perfil = "Conservador";
-            String descricao = "Baixo volume de investimentos e pouca movimentação. Perfil conservador, com foco em segurança e liquidez.";
-            return new PerfilRiscoResponseDTO(clienteId, perfil, pontuacao, descricao);
-        }
+            Cliente cliente = clienteRepository.findById(clienteId);
 
-        PerfilRiscoScore score = calcularScores(cliente, investimentos);
+            if (cliente == null) {
+                throw new IllegalArgumentException("Cliente não encontrado para o id: " + clienteId);
+            }
 
-        String perfil;
-        String descricao;
+            int pontuacao = calcularPontuacaoSimples(cliente);
 
-        if (score.pontuacaoFinal() <= 40) {
-            perfil = "Conservador";
-            descricao = "Perfil conservador, com baixa movimentação e foco em liquidez.";
-        } else if (score.pontuacaoFinal() <= 70) {
-            perfil = "Moderado";
-            descricao = "Perfil equilibrado entre liquidez e rentabilidade.";
-        } else {
-            perfil = "Agressivo";
-            descricao = "Perfil que busca alta rentabilidade, aceitando maior risco.";
-        }
+            String perfil;
+            String descricao;
 
-        return new PerfilRiscoResponseDTO(clienteId, perfil, score.pontuacaoFinal(), descricao);
-    }
+            if (pontuacao <= 40) {
+                perfil = "Conservador";
+                descricao = "Perfil conservador, com foco em liquidez e segurança.";
+            } else if (pontuacao <= 80) {
+                perfil = "Moderado";
+                descricao = "Perfil equilibrado entre liquidez e rentabilidade.";
+            } else {
+                perfil = "Agressivo";
+                descricao = "Perfil agressivo, com busca de maior rentabilidade aceitando maior risco.";
+            }
 
-    private PerfilRiscoScore calcularScores(Cliente cliente, List<Investimento> investimentos) {
-        double volumeScore = calcularScoreVolume(cliente, investimentos);
-        double frequenciaScore = calcularScoreFrequencia(cliente, investimentos);
-        double preferenciaScore = calcularScorePreferencia(cliente, investimentos);
+            return new PerfilRiscoResponseDTO(
+                    clienteId,
+                    perfil,
+                    pontuacao,
+                    descricao
+            );
 
-        int pontuacaoFinal = (int) Math.round((volumeScore + frequenciaScore + preferenciaScore) / 3.0);
-
-        return new PerfilRiscoScore(volumeScore, frequenciaScore, preferenciaScore, pontuacaoFinal);
-    }
-
-    private double calcularScoreVolume(Cliente cliente, List<Investimento> investimentos) {
-        double totalInvestidoHistorico = investimentos.stream()
-                .mapToDouble(inv -> inv.getValor() != null ? inv.getValor() : 0.0)
-                .sum();
-
-        double totalCliente = cliente.getValorTotalInvestido() != null
-                ? cliente.getValorTotalInvestido()
-                : 0.0;
-
-        double volumeTotal = totalInvestidoHistorico + totalCliente;
-
-        if (volumeTotal <= 10_000) {
-            return 20.0;
-        } else if (volumeTotal <= 50_000) {
-            return 50.0;
-        } else if (volumeTotal <= 200_000) {
-            return 75.0;
-        } else {
-            return 90.0;
+        } finally {
+            // medir fim e registrar telemetria SEMPRE, mesmo em caso de erro
+            long fim = System.currentTimeMillis();
+            telemetriaService.registrar("perfil-risco", fim - inicio);
         }
     }
 
-    private double calcularScoreFrequencia(Cliente cliente, List<Investimento> investimentos) {
-        Integer movMensal = cliente.getMovimentacaoMensal();
-        int movimentacaoDeclarada = movMensal != null ? movMensal : 0;
+    /**
+     * Cálculo simples baseado APENAS nos dados do cliente,
+     * conforme descrito no Desafio Caixa Verso.
+     */
+    private int calcularPontuacaoSimples(Cliente cliente) {
 
-        LocalDate hoje = LocalDate.now();
-        DateTimeFormatter fmt = DateTimeFormatter.ISO_LOCAL_DATE;
+        int pontos = 0;
 
-        long qtdUltimos12Meses = investimentos.stream()
-                .filter(inv -> {
-                    try {
-                        String dataStr = inv.getData();
-                        if (dataStr == null || dataStr.isBlank()) {
-                            return false;
-                        }
-                        LocalDate data = LocalDate.parse(dataStr.substring(0, 10), fmt);
-                        return !data.isBefore(hoje.minusMonths(12));
-                    } catch (Exception e) {
-                        return false;
-                    }
-                })
-                .count();
+        // 1. Volume (valorTotalInvestido)
+        double volume = cliente.getValorTotalInvestido() != null
+                ? cliente.getValorTotalInvestido() : 0.0;
 
-        int freqCombinada = movimentacaoDeclarada + (int) qtdUltimos12Meses;
+        if (volume <= 5000) pontos += 10;
+        else if (volume <= 20000) pontos += 20;
+        else if (volume <= 50000) pontos += 30;
+        else pontos += 40; // acima de 50k → agressivo
 
-        if (freqCombinada <= 3) {
-            return 20.0;
-        } else if (freqCombinada <= 8) {
-            return 50.0;
-        } else if (freqCombinada <= 20) {
-            return 70.0;
+
+        // 2. Movimentação Mensal
+        int mov = cliente.getMovimentacaoMensal() != null
+                ? cliente.getMovimentacaoMensal() : 0;
+
+        if (mov <= 1) pontos += 10;
+        else if (mov <= 4) pontos += 20;
+        else if (mov <= 10) pontos += 30;
+        else pontos += 40; // mais de 10 movimentações
+
+
+        // 3. Preferência por Liquidez ou Rentabilidade
+        Integer pref = cliente.getPrefereLiquidez();
+
+        if (pref != null && pref == 1) {
+            pontos += 5;   // prefere liquidez → conservador
         } else {
-            return 90.0;
+            pontos += 35;  // prefere rentabilidade → agressivo
         }
-    }
 
-    private double calcularScorePreferencia(Cliente cliente, List<Investimento> investimentos) {
-        long qtdLiquidez = investimentos.stream()
-                .filter(inv -> {
-                    String tipo = inv.getTipo();
-                    if (tipo == null) return false;
-                    String t = tipo.toUpperCase();
-                    return t.contains("CDB")
-                            || t.contains("TESOURO")
-                            || t.contains("LCI")
-                            || t.contains("LCA");
-                })
-                .count();
-
-        long qtdRentabilidade = investimentos.stream()
-                .filter(inv -> {
-                    String tipo = inv.getTipo();
-                    if (tipo == null) return false;
-                    String t = tipo.toUpperCase();
-                    return t.contains("FUNDO")
-                            || t.contains("MULTIMERCADO")
-                            || t.contains("ACOES")
-                            || t.contains("AÇÕES");
-                })
-                .count();
-
-        double total = investimentos.size();
-        double pesoLiquidez = total > 0 ? (qtdLiquidez / total) : 0.0;
-        double pesoRentabilidade = total > 0 ? (qtdRentabilidade / total) : 0.0;
-
-        double mediaRentabilidade = investimentos.stream()
-                .mapToDouble(inv -> inv.getRentabilidade() != null ? inv.getRentabilidade() : 0.0)
-                .average()
-                .orElse(0.0);
-
-        Integer prefereLiquidez = cliente.getPrefereLiquidez();
-        boolean declaracaoLiquidez = prefereLiquidez != null && prefereLiquidez == 1;
-
-        if (declaracaoLiquidez && pesoLiquidez >= 0.6 && mediaRentabilidade < 0.12) {
-            return 25.0;
-        } else if (!declaracaoLiquidez && pesoRentabilidade >= 0.6 && mediaRentabilidade >= 0.15) {
-            return 85.0;
-        } else {
-            return 55.0;
-        }
+        return pontos;
     }
 }

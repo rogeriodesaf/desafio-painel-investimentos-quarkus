@@ -1,15 +1,18 @@
 package br.com.caixaverso.painel.service;
 
+import br.com.caixaverso.painel.dto.TelemetriaResponse;
 import br.com.caixaverso.painel.model.Telemetria;
 import br.com.caixaverso.painel.repository.TelemetriaRepository;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
 import java.util.List;
-import java.util.Map;
 
 @ApplicationScoped
 public class TelemetriaService {
@@ -17,8 +20,14 @@ public class TelemetriaService {
     @Inject
     TelemetriaRepository telemetriaRepository;
 
+    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_INSTANT;
+
+
+
+    // REGISTRAR MÉTRICA POR SERVIÇO (chamado a cada request)
     @Transactional
     public void registrar(String servico, long tempoRespostaMs) {
+
         if (servico == null || servico.isBlank()) {
             throw new IllegalArgumentException("O nome do serviço não pode ser nulo ou vazio.");
         }
@@ -28,8 +37,11 @@ public class TelemetriaService {
         }
 
         Telemetria existente = telemetriaRepository.findByServico(servico);
-        String dataAtual = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
 
+        // Ex.: "2025-10-31T14:00:00Z"
+        String dataAtual = OffsetDateTime.now(ZoneOffset.UTC).format(FORMATTER);
+
+        // Criar registro novo se não existir
         if (existente == null) {
             Telemetria novo = new Telemetria();
             novo.setServico(servico);
@@ -40,6 +52,7 @@ public class TelemetriaService {
             return;
         }
 
+        // Atualizar média incremental
         int chamadasAntigas = existente.getQuantidadeChamadas();
         double mediaAntiga = existente.getMediaTempoRespostaMs();
 
@@ -51,40 +64,63 @@ public class TelemetriaService {
         existente.setData(dataAtual);
     }
 
+
     public List<Telemetria> listarTudo() {
         return telemetriaRepository.listAll();
     }
 
-    public Map<String, Object> calcularEstatisticas() {
+
+    public TelemetriaResponse montarResposta() {
+
         List<Telemetria> registros = telemetriaRepository.listAll();
 
-        if (registros.isEmpty()) {
-            return Map.of(
-                    "mediaTempoResposta", 0,
-                    "servicoMaisLento", "nenhum",
-                    "totalRequisicoes", 0
-            );
-        }
+        // Converter entidades -> DTO TelemetriaResponse.Servico
+        List<TelemetriaResponse.Servico> servicos = registros.stream()
+                .map(t -> new TelemetriaResponse.Servico(
+                        t.getServico(),
+                        t.getQuantidadeChamadas(),
+                        t.getMediaTempoRespostaMs()
+                ))
+                .toList();
+
+        // Determinar início do período
+        String inicio = registros.isEmpty()
+                ? null
+                : registros.stream()
+                .map(Telemetria::getData)
+                .sorted()
+                .findFirst()
+                .orElse(null);
+
+        // Determinar fim (agora)
+        String fim = OffsetDateTime.now(ZoneOffset.UTC)
+                .format(FORMATTER);
+
+        TelemetriaResponse.Periodo periodo = new TelemetriaResponse.Periodo(inicio, fim);
+
+        return new TelemetriaResponse(servicos, periodo);
+    }
+
+
+    public double mediaGeralTempoResposta() {
+        List<Telemetria> registros = telemetriaRepository.listAll();
+        if (registros.isEmpty()) return 0;
 
         double soma = 0;
-        int totalChamadas = 0;
+        int total = 0;
 
         for (Telemetria t : registros) {
             soma += t.getMediaTempoRespostaMs() * t.getQuantidadeChamadas();
-            totalChamadas += t.getQuantidadeChamadas();
+            total += t.getQuantidadeChamadas();
         }
 
-        double mediaGeral = soma / totalChamadas;
+        return soma / total;
+    }
 
-        String servicoMaisLento = registros.stream()
-                .max((a, b) -> Double.compare(a.getMediaTempoRespostaMs(), b.getMediaTempoRespostaMs()))
+    public String servicoMaisLento() {
+        return telemetriaRepository.listAll().stream()
+                .max(Comparator.comparingDouble(Telemetria::getMediaTempoRespostaMs))
                 .map(Telemetria::getServico)
-                .orElse("indefinido");
-
-        return Map.of(
-                "mediaTempoResposta", (long) mediaGeral,
-                "servicoMaisLento", servicoMaisLento,
-                "totalRequisicoes", totalChamadas
-        );
+                .orElse("nenhum");
     }
 }
