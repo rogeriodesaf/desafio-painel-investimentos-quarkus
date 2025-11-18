@@ -3,6 +3,7 @@ package br.com.caixaverso.painel.resource;
 import br.com.caixaverso.painel.dto.TelemetriaResponse;
 import br.com.caixaverso.painel.model.Telemetria;
 import br.com.caixaverso.painel.service.TelemetriaService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -23,6 +24,7 @@ public class TelemetriaResource {
     TelemetriaService telemetriaService;
 
     @GET
+    @RolesAllowed("admin")
     @Operation(summary = "Lista dados de telemetria por serviço")
     public TelemetriaResponse listarTelemetria() {
         List<Telemetria> registros = telemetriaService.listarTudo();
@@ -42,4 +44,3 @@ public class TelemetriaResource {
         return new TelemetriaResponse(servicos, periodo);
     }
 }
-
