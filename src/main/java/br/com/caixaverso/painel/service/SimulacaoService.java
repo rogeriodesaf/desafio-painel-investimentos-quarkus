@@ -6,6 +6,8 @@ import br.com.caixaverso.painel.model.Produto;
 import br.com.caixaverso.painel.model.Simulacao;
 import br.com.caixaverso.painel.repository.ProdutoRepository;
 import br.com.caixaverso.painel.repository.SimulacaoRepository;
+import br.com.caixaverso.painel.service.SimulacaoDiaService;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -25,6 +27,10 @@ public class SimulacaoService {
 
     @Inject
     TelemetriaService telemetriaService;
+
+    // ✔ agora devidamente injetado
+    @Inject
+    SimulacaoDiaService simulacaoDiaService;
 
     @Transactional
     public SimulacaoResponseDTO simular(SimulacaoRequestDTO request) {
@@ -50,6 +56,7 @@ public class SimulacaoService {
 
         String dataSimulacao = OffsetDateTime.now().toString();
 
+        // ===== Persistência da simulação =====
         Simulacao simulacao = new Simulacao();
         simulacao.setClienteId(request.clienteId());
         simulacao.setProduto(escolhido.getNome());
@@ -60,6 +67,29 @@ public class SimulacaoService {
 
         simulacaoRepository.persist(simulacao);
 
+        // ======================================================
+        //  NOVO TRECHO — REGISTRAR ESTATÍSTICA DIÁRIA
+        // ======================================================
+        String dataHoje = OffsetDateTime.now().toLocalDate().toString();
+
+        List<Simulacao> simulacoesHoje = simulacaoRepository.find(
+                "produto = ?1 AND substr(dataSimulacao, 1, 10) = ?2",
+                escolhido.getNome(),
+                dataHoje
+        ).list();
+
+        int quantidade = simulacoesHoje.size();
+
+        double media = simulacoesHoje.stream()
+                .mapToDouble(Simulacao::getValorFinal)
+                .average()
+                .orElse(0.0);
+
+        simulacaoDiaService.registrar(escolhido.getNome(), quantidade, media);
+        // ======================================================
+
+
+        // ===== DTOs da resposta =====
         SimulacaoResponseDTO.ProdutoValidadoDTO produtoDTO =
                 new SimulacaoResponseDTO.ProdutoValidadoDTO(
                         escolhido.getId(),

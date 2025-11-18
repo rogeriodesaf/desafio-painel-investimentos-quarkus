@@ -5,6 +5,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Table;
+import jakarta.persistence.Column;
 
 @Entity
 @Table(name = "simulacao_dia")
@@ -15,7 +16,10 @@ public class SimulacaoDia {
     private Long id;
 
     private String produto;
-    private String data;
+
+    @Column(name = "data")
+    private String dataSimples;
+
     private Integer quantidadeSimulacoes;
     private Double mediaValorFinal;
 
@@ -37,12 +41,12 @@ public class SimulacaoDia {
         this.produto = produto;
     }
 
-    public String getData() {
-        return data;
+    public String getDataSimples() {
+        return dataSimples;
     }
 
-    public void setData(String data) {
-        this.data = data;
+    public void setDataSimples(String dataSimples) {
+        this.dataSimples = dataSimples;
     }
 
     public Integer getQuantidadeSimulacoes() {

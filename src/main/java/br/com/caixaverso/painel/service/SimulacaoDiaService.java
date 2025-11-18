@@ -3,6 +3,7 @@ package br.com.caixaverso.painel.service;
 import br.com.caixaverso.painel.dto.SimulacaoPorProdutoDiaDTO;
 import br.com.caixaverso.painel.model.SimulacaoDia;
 import br.com.caixaverso.painel.repository.SimulacaoDiaRepository;
+
 import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
@@ -21,7 +22,7 @@ public class SimulacaoDiaService {
         return simulacaoDiaRepository.listAll().stream()
                 .map(s -> new SimulacaoPorProdutoDiaDTO(
                         s.getProduto(),
-                        s.getData(),
+                        s.getDataSimples(),
                         s.getQuantidadeSimulacoes(),
                         s.getMediaValorFinal()
                 ))
@@ -30,24 +31,28 @@ public class SimulacaoDiaService {
 
     @Transactional
     public void registrar(String produto, int quantidade, double media) {
-        if (produto == null || produto.isBlank()) {
-            throw new IllegalArgumentException("produto não pode ser vazio.");
-        }
-        if (quantidade < 0) {
-            throw new IllegalArgumentException("quantidadeSimulacoes deve ser >= 0");
-        }
-        if (media < 0) {
-            throw new IllegalArgumentException("mediaValorFinal deve ser >= 0");
-        }
-
-        SimulacaoDia registro = new SimulacaoDia();
-        registro.setProduto(produto);
-        registro.setQuantidadeSimulacoes(quantidade);
-        registro.setMediaValorFinal(media);
 
         String hoje = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        registro.setData(hoje);
 
-        simulacaoDiaRepository.persist(registro);
+        // Verificar se já existe registro para este produto e hoje
+        SimulacaoDia existente = simulacaoDiaRepository.find(
+                "produto = ?1 AND dataSimples = ?2", produto, hoje
+        ).firstResult();
+
+        if (existente != null) {
+            //  Atualizar registro existente
+            existente.setQuantidadeSimulacoes(quantidade);
+            existente.setMediaValorFinal(media);
+            return;
+        }
+
+        // Criar novo registro
+        SimulacaoDia novo = new SimulacaoDia();
+        novo.setProduto(produto);
+        novo.setDataSimples(hoje);
+        novo.setQuantidadeSimulacoes(quantidade);
+        novo.setMediaValorFinal(media);
+
+        simulacaoDiaRepository.persist(novo);
     }
 }
