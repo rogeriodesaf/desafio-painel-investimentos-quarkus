@@ -29,7 +29,7 @@ public class SimulacaoResource {
 
     @POST
     @Path("/simular-investimento")
-    @RolesAllowed("user")
+    @RolesAllowed({"user", "admin"})
     @Operation(summary = "Simula um investimento com base nos parâmetros informados")
     public SimulacaoResponseDTO simularInvestimento(SimulacaoRequestDTO request) {
         return simulacaoService.simular(request);
@@ -37,7 +37,7 @@ public class SimulacaoResource {
 
     @GET
     @Path("/simulacoes")
-    @RolesAllowed("user")
+    @RolesAllowed({"user", "admin"})
     @Operation(summary = "Retorna todas as simulações realizadas")
     public List<Simulacao> listarTodas() {
         return simulacaoService.listarTodas();
@@ -45,7 +45,7 @@ public class SimulacaoResource {
 
     @GET
     @Path("/simulacoes/por-produto-dia")
-    @RolesAllowed("user")
+    @RolesAllowed({"user", "admin"})
     @Operation(summary = "Retorna valores simulados agregados por produto e dia")
     public List<SimulacaoPorProdutoDiaDTO> listarPorProdutoDia() {
         return simulacaoDiaService.listarTudo();

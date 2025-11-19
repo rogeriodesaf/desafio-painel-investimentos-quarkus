@@ -14,7 +14,7 @@ public class PerfilRiscoService {
     ClienteRepository clienteRepository;
 
     @Inject
-    TelemetriaService telemetriaService; // ← adicionamos a telemetria
+    TelemetriaService telemetriaService;
 
     public PerfilRiscoResponseDTO calcularPerfil(Long clienteId) {
 
@@ -61,10 +61,6 @@ public class PerfilRiscoService {
         }
     }
 
-    /**
-     * Cálculo simples baseado APENAS nos dados do cliente,
-     * conforme descrito no Desafio Caixa Verso.
-     */
     private int calcularPontuacaoSimples(Cliente cliente) {
 
         int pontos = 0;
@@ -79,7 +75,7 @@ public class PerfilRiscoService {
         else pontos += 40; // acima de 50k → agressivo
 
 
-        // 2. Movimentação Mensal
+        //  Movimentação Mensal
         int mov = cliente.getMovimentacaoMensal() != null
                 ? cliente.getMovimentacaoMensal() : 0;
 
@@ -89,7 +85,7 @@ public class PerfilRiscoService {
         else pontos += 40; // mais de 10 movimentações
 
 
-        // 3. Preferência por Liquidez ou Rentabilidade
+        //Preferência por Liquidez ou Rentabilidade
         Integer pref = cliente.getPrefereLiquidez();
 
         if (pref != null && pref == 1) {

@@ -24,7 +24,7 @@ public class PerfilRiscoResource {
 
     @GET
     @Path("/perfil-risco/{clienteId}")
-    @RolesAllowed("user")
+    @RolesAllowed({"user", "admin"})
     @Operation(summary = "Obtém o perfil de risco do cliente com base em volume, frequência e preferência")
     public PerfilRiscoResponseDTO obterPerfilRisco(@PathParam("clienteId") Long clienteId) {
         return perfilRiscoService.calcularPerfil(clienteId);

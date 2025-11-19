@@ -10,7 +10,6 @@ import jakarta.transaction.Transactional;
 
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
-import java.time.format.DateTimeFormatter;
 import java.util.Comparator;
 import java.util.List;
 
@@ -20,11 +19,7 @@ public class TelemetriaService {
     @Inject
     TelemetriaRepository telemetriaRepository;
 
-    private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ISO_INSTANT;
-
-
-
-    // REGISTRAR MÉTRICA POR SERVIÇO (chamado a cada request)
+    //registrar métrica por serviço
     @Transactional
     public void registrar(String servico, long tempoRespostaMs) {
 
@@ -38,8 +33,10 @@ public class TelemetriaService {
 
         Telemetria existente = telemetriaRepository.findByServico(servico);
 
-        // Ex.: "2025-10-31T14:00:00Z"
-        String dataAtual = OffsetDateTime.now(ZoneOffset.UTC).format(FORMATTER);
+        //  data igual ao PDF (yyyy-MM-dd)
+        String dataAtual = OffsetDateTime.now(ZoneOffset.UTC)
+                .toString()
+                .substring(0, 10);
 
         // Criar registro novo se não existir
         if (existente == null) {
@@ -64,37 +61,38 @@ public class TelemetriaService {
         existente.setData(dataAtual);
     }
 
-
     public List<Telemetria> listarTudo() {
         return telemetriaRepository.listAll();
     }
 
 
+    // Montar resposta formatada (IGUAL AO PDF)
     public TelemetriaResponse montarResposta() {
 
         List<Telemetria> registros = telemetriaRepository.listAll();
 
-        // Converter entidades -> DTO TelemetriaResponse.Servico
+        // 1 — Converter entidades -> DTO com média arredondada
         List<TelemetriaResponse.Servico> servicos = registros.stream()
                 .map(t -> new TelemetriaResponse.Servico(
                         t.getServico(),
                         t.getQuantidadeChamadas(),
-                        t.getMediaTempoRespostaMs()
+                        Math.round(t.getMediaTempoRespostaMs())  // média inteira conforme PDF
                 ))
                 .toList();
 
-        // Determinar início do período
+        // 2 — Determinar início do período (primeira data salva)
         String inicio = registros.isEmpty()
                 ? null
                 : registros.stream()
-                .map(Telemetria::getData)
+                .map(Telemetria::getData)          // já está yyyy-MM-dd
                 .sorted()
                 .findFirst()
                 .orElse(null);
 
-        // Determinar fim (agora)
+        // 3 — Determinar fim (hoje) no padrão yyyy-MM-dd
         String fim = OffsetDateTime.now(ZoneOffset.UTC)
-                .format(FORMATTER);
+                .toString()
+                .substring(0, 10);
 
         TelemetriaResponse.Periodo periodo = new TelemetriaResponse.Periodo(inicio, fim);
 
@@ -102,6 +100,7 @@ public class TelemetriaService {
     }
 
 
+    // MÉTRICAS AUXILIARES (USO INTERNO)
     public double mediaGeralTempoResposta() {
         List<Telemetria> registros = telemetriaRepository.listAll();
         if (registros.isEmpty()) return 0;

@@ -19,7 +19,7 @@ public class SimulacaoDiaService {
     SimulacaoDiaRepository simulacaoDiaRepository;
 
     @Inject
-    TelemetriaService telemetriaService; // ← TELEMETRIA ADICIONADA
+    TelemetriaService telemetriaService;
 
     public List<SimulacaoPorProdutoDiaDTO> listarTudo() {
 

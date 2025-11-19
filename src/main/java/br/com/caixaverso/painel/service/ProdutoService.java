@@ -17,7 +17,7 @@ public class ProdutoService {
     ProdutoRepository produtoRepository;
 
     @Inject
-    TelemetriaService telemetriaService; // ← telemetria adicionada
+    TelemetriaService telemetriaService;
 
     public List<ProdutoResponseDTO> recomendarPorPerfil(String perfil) {
 

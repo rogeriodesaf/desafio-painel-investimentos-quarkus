@@ -2,6 +2,7 @@ package br.com.caixaverso.painel.resource;
 
 import br.com.caixaverso.painel.dto.InvestimentoResponseDTO;
 import br.com.caixaverso.painel.service.InvestimentoService;
+import jakarta.annotation.security.RolesAllowed;
 import jakarta.inject.Inject;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
@@ -22,9 +23,11 @@ public class InvestimentoResource {
     InvestimentoService investimentoService;
 
     @GET
+    @RolesAllowed({"user", "admin"})
     @Path("/{clienteId}")
     @Operation(summary = "Retorna o histórico de investimentos de um cliente")
     public List<InvestimentoResponseDTO> listarPorCliente(@PathParam("clienteId") Long clienteId) {
+
         return investimentoService.listarPorCliente(clienteId);
     }
 }

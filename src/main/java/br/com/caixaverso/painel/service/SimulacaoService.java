@@ -11,9 +11,11 @@ import jakarta.enterprise.context.ApplicationScoped;
 import jakarta.inject.Inject;
 import jakarta.transaction.Transactional;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 
@@ -56,8 +58,10 @@ public class SimulacaoService {
         double valorFinal = request.valor() * (1 + jurosProporcionais);
 
         // Formatando data exatamente como "2025-10-31T14:00:00Z"
-        String dataSimulacao = OffsetDateTime.now(ZoneOffset.UTC)
-                .format(DateTimeFormatter.ISO_INSTANT);
+        String dataSimulacao = Instant.now()
+                .truncatedTo(ChronoUnit.SECONDS)
+                .toString();
+
 
         // Persistindo no banco
         Simulacao simulacao = new Simulacao();
@@ -87,7 +91,7 @@ public class SimulacaoService {
 
         simulacaoDiaService.registrar(escolhido.getNome(), quantidade, media);
 
-        // Construindo resposta no padrão do PDF
+        // Construindo resposta
         SimulacaoResponseDTO.ProdutoValidadoDTO produtoDTO =
                 new SimulacaoResponseDTO.ProdutoValidadoDTO(
                         escolhido.getId(),
