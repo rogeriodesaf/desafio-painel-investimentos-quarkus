@@ -96,4 +96,8 @@ public class PerfilRiscoService {
 
         return pontos;
     }
+    public int testarPontuacao(Cliente cliente) {
+        return calcularPontuacaoSimples(cliente);
+    }
+
 }

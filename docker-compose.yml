@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  painel-investimentos:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: painel-investimentos
+    ports:
+      - "8080:8080"
+    environment:
+
+      # VARIÁVEIS DE USUÁRIO (seu endpoint de login)
+      USER_LOGIN: "caixa"
+      USER_PASSWORD: "123"
+      ADMIN_LOGIN: "admin"
+      ADMIN_PASSWORD: "123"
+
+      # CONFIGURAÇÃO DO BANCO PARA O DOCKER
+      QUARKUS_DATASOURCE_JDBC_URL: "jdbc:sqlite:/app/sqlite/banco.db"
+      QUARKUS_DATASOURCE_JDBC_DRIVER: "org.sqlite.JDBC"
+      QUARKUS_DATASOURCE_USERNAME: ""
+      QUARKUS_DATASOURCE_PASSWORD: ""
+
+    volumes:
+      - ./sqlite:/app/sqlite        # banco persistente
+      - ./logs:/work/logs           # se quiser logs externos
+
+    restart: unless-stopped
